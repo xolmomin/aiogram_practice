@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, select as sqlalchemy_select, \
-    update as sqlalchemy_update, delete as sqlalchemy_delete
-from sqlalchemy.orm import DeclarativeBase, sessionmaker, declared_attr
+    update as sqlalchemy_update, delete as sqlalchemy_delete, Integer, String, ForeignKey
+from sqlalchemy.orm import DeclarativeBase, sessionmaker, declared_attr, Mapped, mapped_column, relationship
 
 from config import settings
 
@@ -108,3 +108,24 @@ class AbstractClass:
 
 class Model(AbstractClass, Base):
     __abstract__ = True
+
+
+
+class Region(Model):  # Viloyat
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String)
+    districts: Mapped[list['District']] = relationship('District', back_populates='region')
+
+
+class District(Model):  # Tuman
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String)
+    region_id: Mapped[int] = mapped_column(ForeignKey('regions.id', ondelete='CASCADE'))
+    region: Mapped['Region'] = relationship('Region', back_populates='districts')
+
+    @classmethod
+    def get_by_region_id(cls, _id):
+        query = sqlalchemy_select(cls).where(cls.region_id == _id)
+        db.expire_all()
+        results = db.execute(query)
+        return results.scalars()
