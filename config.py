@@ -4,7 +4,6 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     TELEGRAM_API_TOKEN: str = Field()
-    ADMIN_LIST: int = Field()
 
     POSTGRES_USER: str = Field()
     POSTGRES_PASSWORD: str = Field()

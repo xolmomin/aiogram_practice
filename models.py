@@ -1,5 +1,8 @@
-from sqlalchemy import create_engine, select as sqlalchemy_select, \
-    update as sqlalchemy_update, delete as sqlalchemy_delete, Integer, String, ForeignKey
+import enum
+from datetime import datetime
+
+from sqlalchemy import Enum, create_engine, select as sqlalchemy_select, \
+    update as sqlalchemy_update, delete as sqlalchemy_delete, Integer, String, ForeignKey, BigInteger, DateTime, func
 from sqlalchemy.orm import DeclarativeBase, sessionmaker, declared_attr, Mapped, mapped_column, relationship
 
 from config import settings
@@ -105,10 +108,42 @@ class AbstractClass:
         cls.commit()
         return new_obj.scalars()
 
+    # 🔹 New filter method
+    @classmethod
+    def filter(cls, *conditions, **kwargs):
+        """
+        Filter records by conditions or keyword arguments.
+        Example:
+            User.filter(User.age > 21, is_active=True)
+
+            # Get all active users
+            users = User.filter(is_active=True)
+
+            # Get users older than 30
+            users = User.filter(User.age > 30)
+
+            # Combine both
+            users = User.filter(User.age > 30, is_active=True)
+        """
+        query = sqlalchemy_select(cls)
+
+        # Handle explicit conditions (like User.age > 21)
+        if conditions:
+            for cond in conditions:
+                query = query.where(cond)
+
+        # Handle keyword filters (like is_active=True)
+        for key, value in kwargs.items():
+            if hasattr(cls, key):
+                query = query.where(getattr(cls, key) == value)
+
+        db.expire_all()
+        results = db.execute(query)
+        return results.scalars()
+
 
 class Model(AbstractClass, Base):
     __abstract__ = True
-
 
 
 class Region(Model):  # Viloyat
@@ -129,3 +164,30 @@ class District(Model):  # Tuman
         db.expire_all()
         results = db.execute(query)
         return results.scalars()
+
+
+class User(Model):
+    class Type(enum.Enum):
+        ADMIN = 'admin'
+        USER = 'user'
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    first_name: Mapped[str] = mapped_column(String(255), nullable=True)
+    last_name: Mapped[str] = mapped_column(String(255), nullable=True)
+    type: Mapped[Type] = mapped_column(Enum(Type), server_default=Type.USER.name)
+    username: Mapped[str] = mapped_column(String(255), nullable=True, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    @classmethod
+    def get_or_create(cls, **kwargs) -> tuple['User', bool]:
+        user = cls.get(kwargs.get('id'))
+        if user is None:
+            user = cls.create(**kwargs)
+            return user, True
+        return user, False
+
+    @property
+    def is_admin(self) -> bool:
+        return self.type == self.Type.ADMIN
+
+# @pdp_p34_bot

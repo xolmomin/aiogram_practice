@@ -6,17 +6,27 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
-from aiogram.types import Message, InlineKeyboardButton, ReplyKeyboardRemove, CallbackQuery
+from aiogram.types import Message, InlineKeyboardButton, CallbackQuery, BotCommand, \
+    BotCommandScopeChat, BotCommandScopeAllPrivateChats
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import settings
-from models import db, Region, District
+from filters import IsAdminFilter
+from models import db, Region, District, User
 
 dp = Dispatcher()
 
 
+@dp.message(CommandStart(), IsAdminFilter())
+async def cmd_start(message: Message):
+    await message.answer("Xush kelibsiz")
+
+
 @dp.message(CommandStart())
 async def start_handler(message: Message):
+    data = message.from_user.model_dump(include={'id', 'first_name', 'last_name', 'username'})
+    user, created = User.get_or_create(**data)
+
     ikm = InlineKeyboardBuilder()
     regions = Region.get_all()
 
@@ -34,7 +44,6 @@ async def callback_handler(callback_data: CallbackQuery):
     for district in districts:
         ikm.row(InlineKeyboardButton(text=district.name, callback_data=f'region_{district.id}'))
     await callback_data.message.answer('Tumanlar', reply_markup=ikm.as_markup())
-
 
 
 """
@@ -56,9 +65,32 @@ userlar soni: 3
 
 """
 
+
 @dp.startup()
 async def startup(bot: Bot) -> None:
     db.create_all()
+    # await bot.send_message(ADMIN_ID, "Bot ishga tushdi")
+
+    admin_list: list[User] = User.filter(type=User.Type.ADMIN.name)
+    # admin commands
+    for admin in admin_list:
+        await bot.set_my_commands(
+            [
+                BotCommand(command='start', description='Botni ishga tushirish'),
+                # BotCommand(command='users_count', description='users count'),
+                # BotCommand(command='category', description='category larni korish'),
+                BotCommand(command='drop_all', description='drop all tables'),
+            ],
+            scope=BotCommandScopeChat(chat_id=admin.id),
+        )
+
+    await bot.set_my_commands(
+        [
+            BotCommand(command='start', description='Botni ishga tushirish'),
+            BotCommand(command='id', description='Idni korish'),
+        ],
+        scope=BotCommandScopeAllPrivateChats()
+    )
 
 
 async def main() -> None:
