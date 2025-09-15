@@ -146,6 +146,13 @@ class Model(AbstractClass, Base):
     __abstract__ = True
 
 
+class Channel(Model):
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255))
+    chat_id: Mapped[str] = mapped_column(String(255))
+    link: Mapped[str] = mapped_column(String(255), unique=True)
+
+
 class Region(Model):  # Viloyat
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String)
@@ -189,5 +196,3 @@ class User(Model):
     @property
     def is_admin(self) -> bool:
         return self.type == self.Type.ADMIN
-
-# @pdp_p34_bot
