@@ -186,8 +186,14 @@ userlar soni: 3
 majrubiy azo qilish kanalga
 kanal bilan ishlash
 inline mode bilan ishlash
-webapp
 web adminka
+
+
+makefile bilan ishlash
+webapp
+deploy front
+starlette-admin auth
+sqlalchemy enum (lowercase)
 
 
 
